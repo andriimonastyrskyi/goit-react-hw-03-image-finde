@@ -13,39 +13,39 @@ export class App extends React.Component {
     page: 1,
     inputValue: '',
     currentPreview: '',
+    error: '',
+    totalImages: 0,
   };
 
   componentDidUpdate(prevProps, prevState) {
-    if (prevState.inputValue !== this.state.inputValue) {
-      this.getImages(this.state.inputValue);
-    }
-    if (
-      prevState.page !== this.state.page &&
-      prevState.inputValue === this.state.inputValue
-    ) {
-      this.getImages(this.state.inputValue);
+    const { inputValue, page } = this.state;
+    if (prevState.inputValue !== inputValue || prevState.page !== page) {
+      this.getImages(inputValue);
     }
   }
 
-  getImages = key => {
-    this.setState({ isLoading: true });
+  getImages = () => {
+    const { inputValue, page } = this.state;
+    this.setState({ isLoading: true, error: '' });
 
-    fetchImages(key, this.state.page)
-      .then(({ data: { hits } }) => {
+    fetchImages(inputValue, page)
+      .then(({ hits, totalHits }) => {
+        // const images = hits.map(({ id, tag }) => ({ id, tags }));
         this.setState(prevState => {
           return {
             images: [...prevState.images, ...hits],
+            totalImages: totalHits,
           };
         });
       })
-      .catch(error => console.log(error))
+      .catch(error => this.setState({ error: 'something went wrong' }))
       .finally(() => {
         this.setState({ isLoading: false });
       });
   };
 
   getInputValue = value => {
-    this.setState({ inputValue: value, images: [], page: 1 });
+    this.setState({ inputValue: value, images: [], page: 1, totalImages: 0 });
   };
 
   loadMore = () => {
@@ -65,11 +65,11 @@ export class App extends React.Component {
   };
 
   render() {
-    const { images, currentPreview, isLoading } = this.state;
+    const { images, currentPreview, isLoading, error, totalImages } =
+      this.state;
     return (
       <>
         <Searchbar onSubmit={this.getInputValue} />
-
         {images.length !== 0 && (
           <>
             <ImageGallery
@@ -77,7 +77,7 @@ export class App extends React.Component {
               openModal={this.openModal}
             />
 
-            {!isLoading && (
+            {!isLoading && totalImages !== images.length && (
               <Button text="Load more" clickHandler={this.loadMore} />
             )}
           </>
@@ -93,6 +93,7 @@ export class App extends React.Component {
             <InfinitySpin width="400" color="#4c2ef7" />
           </div>
         )}
+        {error && <p>{error}</p>}
         {currentPreview && (
           <Modal closeModal={this.closeModal} showModal={currentPreview} />
         )}
